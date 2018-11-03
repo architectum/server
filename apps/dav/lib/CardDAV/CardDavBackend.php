@@ -611,6 +611,18 @@ class CardDavBackend implements BackendInterface, SyncSupport {
 		$etag = md5($cardData);
 		$uid = $this->getUID($cardData);
 
+		$q = $this->db->getQueryBuilder();
+		$q->select($q->createFunction('COUNT(*)'))
+			->from('cards')
+			->where($q->expr()->eq('addressbookid', $q->createNamedParameter($addressBookId)))
+			->andWhere($q->expr()->eq('uid', $q->createNamedParameter($uid)));
+		$result = $q->execute();
+		$count = (int) $result->fetchColumn();
+		$result->closeCursor();
+		if ($count !== 0) {
+			throw new \Sabre\DAV\Exception\BadRequest('VCard object with uid already exists in this addressbook collection.');
+		}
+
 		$query = $this->db->getQueryBuilder();
 		$query->insert('cards')
 			->values([
